@@ -1,12 +1,15 @@
+version: '3.8'
+
 services:
   mysql:
     image: mysql:8.4
+    container_name: student_management_db
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER:-MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-student_db}
+      MYSQL_USER: ${MYSQL_USER:-student_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-student_pass}
     ports:
       - "${MYSQL_PORT:-3306}:3306"
     volumes:
@@ -17,6 +20,47 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
+    networks:
+      - app-network
+
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: student_management_phpmyadmin
+    restart: unless-stopped
+    depends_on:
+      - mysql
+    environment:
+      PMA_HOST: mysql
+      PMA_USER: student_app
+      PMA_PASSWORD: appPassword123
+      PMA_DATABASE: student_management
+    ports:
+      - "8080:80"
+    networks:
+      - app-network
+  app:
+    build: .
+    container_name: student_management_app
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      MYSQL_HOST: mysql
+      MYSQL_PORT: ${MYSQL_PORT:-3306}
+      MYSQL_USER: ${MYSQL_USER:-student_app}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-student_pass}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-student_management}
+      PORT: ${PORT:-3000}
+    ports:
+      - "${PORT:-3000}:3000"
+    networks:
+      - app-network
 
 volumes:
   mysql_data:
+
+networks:
+  app-network:
+
